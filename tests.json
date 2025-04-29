@@ -1,80 +1,165 @@
-[
-    [
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        }
+{
+    "ege": [
+        [
+            {
+                "text": "some ege task text",
+                "answer": "some answer",
+                "path": "./images/ege_0_0.jpg"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            }
+        ],
+        [
+            {
+                "text": "some ege task text",
+                "answer": "some answer",
+                "path": "./images/ege_0_0.jpg"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            }
+        ],
+        [
+            {
+                "text": "some ege task text",
+                "answer": "some answer",
+                "path": "./images/ege_0_0.jpg"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            }
+        ]
     ],
-    [
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        }
-    ],
-    [
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        },
-        {
-            "text": "some task text",
-            "answer": "some answer"
-        }
-    ]   
-]
+    "oge": [
+        [
+            {
+                "text": "some oge task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            }
+        ],
+        [
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            }
+        ],
+        [
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            },
+            {
+                "text": "some task text",
+                "answer": "some answer"
+            }
+        ]
+    ]
+}
