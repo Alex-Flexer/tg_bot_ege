@@ -22,11 +22,10 @@ from keyboards import SOLVE_KEYBOARD_MARKUP, CHECKING_STOP_TEST_KEYBOARD_MARKUP
 
 config = dotenv_values(".env")
 
+TOKEN = config["TOKEN"]
+
 
 form_router = Router()
-
-
-TOKEN = config["TOKEN"]
 
 
 with open("tests.json", 'r', encoding='utf-8') as file:
@@ -153,7 +152,6 @@ async def process_answer_task(message: Message, state: FSMContext) -> None:
     else:
         task_text = variant[task_idx]["text"]
         await message.answer(f"ЗАДАНИЕ №{task_idx + 1}\n\n" + task_text)
-
 
 
 @form_router.message()
