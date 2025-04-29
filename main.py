@@ -2,7 +2,6 @@ import json
 import asyncio
 import logging
 import sys
-from random import randint
 
 from dotenv import dotenv_values
 
@@ -19,15 +18,21 @@ from aiogram.types import (
     FSInputFile
 )
 
-from keyboards import EXAM_TYPE_KEYBOARD, CHECKING_STOP_TEST_KEYBOARD, SOLVE_KEYBOARD
+from keyboards import CHECKING_STOP_TEST_KEYBOARD, SOLVE_KEYBOARD, EXAM_TYPE_KEYBOARD
 
+BOT_COMMANDS = [
+    BotCommand(command="start", description="Start bot"),
+    BotCommand(command="solve", description="Start solving tasks")
+]
 
 config = dotenv_values(".env")
 TOKEN = config["TOKEN"]
+
 form_router = Router()
 
 with open("tests.json", 'r', encoding='utf-8') as file:
     TESTS: dict[str, list[list[dict[str, str]]]] = json.load(file)
+
 
 HELLO_TEXT = """👋 Привет!
 Ты в умном боте для подготовки к ЕГЭ и ОГЭ математике.
@@ -44,17 +49,11 @@ HELLO_TEXT = """👋 Привет!
 """
 
 
-BOT_COMMANDS = [
-    BotCommand(command="start", description="Start bot"),
-    BotCommand(command="solve", description="Start solving tasks")
-]
-
-
 async def show_results(message: Message, state: FSMContext) -> None:
     text = "Результаты:\n\n"
 
     data = await state.get_data()
-    exam_type = data.get("exam_type", "ege")
+    exam_type = data["exam_type"]
     variant_idx = data["variant_idx"]
     variant = TESTS[exam_type][variant_idx]
 
@@ -87,13 +86,14 @@ async def show_task(message: Message, task: dict[str, str], task_id: int) -> Non
 
 
 class Form(StatesGroup):
-    choosing_exam = State()  # Новое состояние для выбора типа экзамена
+    choosing_exam = State()
+    choosing_variant = State()
     solving_tasks = State()
     stopping_solving = State()
 
 
 @form_router.message(CommandStart())
-async def command_start(message: Message) -> None:
+async def command_start(message: Message, state: FSMContext) -> None:
     await message.answer(
         HELLO_TEXT,
         reply_markup=ReplyKeyboardRemove()
@@ -104,8 +104,8 @@ async def command_start(message: Message) -> None:
 async def command_solve(message: Message, state: FSMContext) -> None:
     if await state.get_state() == Form.solving_tasks:
         await message.answer(
-            "Чтобы начать решать новый вариант, закончите старый.\n"
-            "Для прекращения решения теста нажмите \"Стоп\"."
+            "Чтобы начать новый вариант, закончите текущий.\n"
+            "Для прекращения решения нажмите \"Стоп\"."
         )
         return
 
@@ -119,21 +119,50 @@ async def command_solve(message: Message, state: FSMContext) -> None:
 @form_router.message(Form.choosing_exam, F.text.casefold().in_(["огэ", "егэ"]))
 async def process_exam_choice(message: Message, state: FSMContext) -> None:
     exam_type = "oge" if message.text.casefold() == "огэ" else "ege"
+
     await state.update_data(exam_type=exam_type)
+    await state.set_state(Form.choosing_variant)
 
-    variant_idx = randint(0, len(TESTS[exam_type]) - 1)
-    await message.answer(f"ВАРИАНТ №{variant_idx + 1}", reply_markup=ReplyKeyboardRemove())
-
-    await state.set_state(Form.solving_tasks)
-    await state.update_data(variant_idx=variant_idx, task_idx=0)
-
-    variant = TESTS[exam_type][variant_idx]
-    await show_task(message, variant[0], 1)
+    max_variants = len(TESTS[exam_type])
+    await message.answer(
+        f"Введите номер варианта (от 1 до {max_variants}):",
+        reply_markup=ReplyKeyboardRemove()
+    )
 
 
 @form_router.message(Form.choosing_exam)
 async def process_unknown_exam_type(message: Message) -> None:
     await message.answer("Пожалуйста, выберите тип экзамена, используя кнопки ниже.")
+
+
+@form_router.message(Form.choosing_variant, F.text.regexp(r'^\d+$'))
+async def process_variant_number(message: Message, state: FSMContext) -> None:
+    variant_number = int(message.text)
+
+    exam_type = await state.get_value("exam_type")
+    max_variants = len(TESTS[exam_type])
+
+    if 1 <= variant_number <= max_variants:
+        variant_idx = variant_number - 1
+        await state.update_data(
+            variant_idx=variant_idx,
+            task_idx=0,
+            answers=[]
+        )
+        await state.set_state(Form.solving_tasks)
+        await message.answer(f"ВАРИАНТ №{variant_number}", reply_markup=ReplyKeyboardRemove())
+
+        variant = TESTS[exam_type][variant_idx]
+        await show_task(message, variant[0], 1)
+    else:
+        await message.answer(f"Пожалуйста, введите число от 1 до {max_variants}")
+
+
+@form_router.message(Form.choosing_variant)
+async def process_invalid_variant_number(message: Message, state: FSMContext) -> None:
+    exam_type = await state.get_value("exam_type")
+    max_variants = len(TESTS[exam_type])
+    await message.answer(f"Пожалуйста, введите число от 1 до {max_variants}")
 
 
 @form_router.message(F.text.casefold() == "стоп", Form.solving_tasks)
@@ -166,9 +195,12 @@ async def process_continue_solving(message: Message, state: FSMContext) -> None:
 @form_router.message(Form.solving_tasks)
 async def process_answer_task(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
-    exam_type = data.get("exam_type", "ege")
+
+    exam_type = data["exam_type"]
+
     answer = message.text
     answers = data.get("answers", []) + [answer]
+
     task_idx = data["task_idx"] + 1
     variant_idx = data["variant_idx"]
     variant = TESTS[exam_type][variant_idx]
@@ -183,9 +215,10 @@ async def process_answer_task(message: Message, state: FSMContext) -> None:
         next_task = variant[task_idx]
         await show_task(message, next_task, task_idx + 1)
 
+
 @form_router.message()
 async def process_unknown_command(message: Message):
-    await message.answer("Неизвестная команда.")
+    await message.answer("Неизвестная команда. Введите /solve чтобы начать решение варианта.")
 
 
 async def main():
@@ -196,6 +229,7 @@ async def main():
     dp.include_router(form_router)
 
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout)
