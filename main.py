@@ -18,12 +18,15 @@ from aiogram.types import (
     ReplyKeyboardRemove,
     BotCommand,
     FSInputFile,
-    CallbackQuery,
-    InputMediaPhoto,
-    InputFile
+    CallbackQuery
 )
 
-from keyboards import CHECKING_STOP_TEST_KEYBOARD, SOLVE_KEYBOARD, EXAM_TYPE_KEYBOARD, START_KEYBOARD
+from keyboards import (
+    FINAL_CHECKING_STOP_TEST_KEYBOARD,
+    FIRST_CHECKING_STOP_TEST_KEYBOARD,
+    EXAM_TYPE_KEYBOARD,
+    EXAM_TYPE_INLINE_KEYBOARD
+)
 
 BOT_COMMANDS = [
     BotCommand(command="start", description="Start bot"),
@@ -74,7 +77,7 @@ async def show_results(message: Message, state: FSMContext) -> None:
 
     text += f"\nВаш результат: {cnt_right_solutions}/{len(user_answers)}"
     await message.answer(text, reply_markup=ReplyKeyboardRemove())
-    await message.answer("Хотите продолжить подготовку?", reply_markup=START_KEYBOARD)
+    await message.answer("Хотите продолжить подготовку?", reply_markup=EXAM_TYPE_INLINE_KEYBOARD)
 
 
 async def show_task(message: Message, state: FSMContext) -> None:
@@ -95,7 +98,7 @@ async def show_task(message: Message, state: FSMContext) -> None:
     last_msg = await message.answer_photo(
         photo,
         caption=caption,
-        reply_markup=SOLVE_KEYBOARD
+        reply_markup=FIRST_CHECKING_STOP_TEST_KEYBOARD
     )
     await state.update_data(last_msg=last_msg)
 
@@ -111,7 +114,7 @@ class Form(StatesGroup):
 async def command_start(message: Message) -> None:
     await message.answer(
         HELLO_TEXT,
-        reply_markup=START_KEYBOARD
+        reply_markup=EXAM_TYPE_INLINE_KEYBOARD
     )
 
 
@@ -136,7 +139,7 @@ async def process_stop_first(message: Message, state: FSMContext) -> None:
     await state.set_state(Form.stopping_solving)
     await message.answer(
         "Вы действительно хотите прекратить решение теста?",
-        reply_markup=CHECKING_STOP_TEST_KEYBOARD
+        reply_markup=FINAL_CHECKING_STOP_TEST_KEYBOARD
     )
 
 
@@ -157,7 +160,10 @@ async def process_stop_undefined(message: Message) -> None:
 
 @form_router.message(F.text.casefold() == "продолжить", Form.stopping_solving)
 async def process_continue_solving(message: Message, state: FSMContext) -> None:
-    await message.answer("Решение заданий успешно восставновлено.", reply_markup=SOLVE_KEYBOARD)
+    await message.answer(
+        "Решение заданий успешно восставновлено.",
+        reply_markup=FIRST_CHECKING_STOP_TEST_KEYBOARD
+    )
     await state.set_state(Form.solving_tasks)
 
 
@@ -171,7 +177,7 @@ async def handle_start_buttons(callback: CallbackQuery, state: FSMContext):
     max_variants = len(listdir(f"./{exam_type}"))
     await callback.message.answer(
         f"Введите номер варианта (от 1 до {max_variants}):",
-        reply_markup=SOLVE_KEYBOARD
+        reply_markup=FIRST_CHECKING_STOP_TEST_KEYBOARD
     )
     await callback.answer()
 
@@ -186,7 +192,7 @@ async def process_exam_choice(message: Message, state: FSMContext) -> None:
     max_variants = len(listdir(f"./{exam_type}"))
     await message.answer(
         f"Введите номер варианта (от 1 до {max_variants}):",
-        reply_markup=SOLVE_KEYBOARD
+        reply_markup=FIRST_CHECKING_STOP_TEST_KEYBOARD
     )
 
 
