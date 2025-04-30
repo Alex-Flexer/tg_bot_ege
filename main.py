@@ -2,6 +2,8 @@ import json
 import asyncio
 import logging
 import sys
+from os.path import join
+from os import listdir
 
 from dotenv import dotenv_values
 
@@ -16,7 +18,9 @@ from aiogram.types import (
     ReplyKeyboardRemove,
     BotCommand,
     FSInputFile,
-    CallbackQuery
+    CallbackQuery,
+    InputMediaPhoto,
+    InputFile
 )
 
 from keyboards import CHECKING_STOP_TEST_KEYBOARD, SOLVE_KEYBOARD, EXAM_TYPE_KEYBOARD, START_KEYBOARD
@@ -31,8 +35,9 @@ TOKEN = config["TOKEN"]
 
 form_router = Router()
 
-with open("tests.json", 'r', encoding='utf-8') as file:
-    TESTS: dict[str, list[list[dict[str, str]]]] = json.load(file)
+
+with open("answers.json", 'r', encoding='utf-8') as file:
+    ANSWERS: dict[str, list[list[str]]] = json.load(file)
 
 
 HELLO_TEXT = """👋 Привет!
@@ -57,10 +62,9 @@ async def show_results(message: Message, state: FSMContext) -> None:
 
     exam_type = data["exam_type"]
     variant_idx = data["variant_idx"]
-    variant = TESTS[exam_type][variant_idx]
 
     user_answers = data.get("answers", [])
-    right_answers = [task["answer"] for task in variant]
+    right_answers = ANSWERS[exam_type][variant_idx]
 
     cnt_right_solutions = 0
 
@@ -70,21 +74,30 @@ async def show_results(message: Message, state: FSMContext) -> None:
 
     text += f"\nВаш результат: {cnt_right_solutions}/{len(user_answers)}"
     await message.answer(text, reply_markup=ReplyKeyboardRemove())
+    await message.answer("Хотите продолжить подготовку?", reply_markup=START_KEYBOARD)
 
 
-async def show_task(message: Message, task: dict[str, str], task_id: int) -> None:
-    if "path" in task:
-        photo = FSInputFile(task["path"])
-        await message.answer_photo(
-            photo,
-            caption=f"ЗАДАНИЕ №{task_id}\n\n{task['text']}",
-            reply_markup=SOLVE_KEYBOARD
-        )
-    else:
-        await message.answer(
-            f"ЗАДАНИЕ №{task_id}\n\n{task['text']}",
-            reply_markup=SOLVE_KEYBOARD
-        )
+async def show_task(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+
+    exam_type = data["exam_type"]
+    variant_idx = data["variant_idx"]
+    task_idx = data["task_idx"]
+
+    photo_path = join(".", exam_type, str(variant_idx), str(task_idx) + ".png")
+    photo = FSInputFile(photo_path)
+    caption = f"ЗАДАНИЕ №{task_idx + 1}"
+
+    if task_idx > 0:
+        last_msg = data["last_msg"]
+        await last_msg.delete()
+
+    last_msg = await message.answer_photo(
+        photo,
+        caption=caption,
+        reply_markup=SOLVE_KEYBOARD
+    )
+    await state.update_data(last_msg=last_msg)
 
 
 class Form(StatesGroup):
@@ -99,7 +112,6 @@ async def command_start(message: Message) -> None:
     await message.answer(
         HELLO_TEXT,
         reply_markup=START_KEYBOARD
-        # reply_markup=ReplyKeyboardRemove(),
     )
 
 
@@ -133,9 +145,9 @@ async def process_stop_final(message: Message, state: FSMContext) -> None:
     await message.answer("Тест приостановлен.", reply_markup=ReplyKeyboardRemove())
     if await state.get_value("variant_idx") is not None:
         await show_results(message, state)
-        
+
     await state.set_state(None)
-    await state.update_data(answers=[], task_idx=0)
+    await state.update_data(answers=[], task_idx=None, variant_idx=None)
 
 
 @form_router.message(F.text.casefold() == "стоп", default_state)
@@ -156,7 +168,7 @@ async def handle_start_buttons(callback: CallbackQuery, state: FSMContext):
 
     await state.set_state(Form.choosing_variant)
 
-    max_variants = len(TESTS[exam_type])
+    max_variants = len(listdir(f"./{exam_type}"))
     await callback.message.answer(
         f"Введите номер варианта (от 1 до {max_variants}):",
         reply_markup=SOLVE_KEYBOARD
@@ -171,7 +183,7 @@ async def process_exam_choice(message: Message, state: FSMContext) -> None:
     await state.update_data(exam_type=exam_type)
     await state.set_state(Form.choosing_variant)
 
-    max_variants = len(TESTS[exam_type])
+    max_variants = len(listdir(f"./{exam_type}"))
     await message.answer(
         f"Введите номер варианта (от 1 до {max_variants}):",
         reply_markup=SOLVE_KEYBOARD
@@ -188,7 +200,7 @@ async def process_variant_number(message: Message, state: FSMContext) -> None:
     variant_number = int(message.text)
 
     exam_type = await state.get_value("exam_type")
-    max_variants = len(TESTS[exam_type])
+    max_variants = len(listdir(f"./{exam_type}"))
 
     if 1 <= variant_number <= max_variants:
         variant_idx = variant_number - 1
@@ -200,8 +212,7 @@ async def process_variant_number(message: Message, state: FSMContext) -> None:
         await state.set_state(Form.solving_tasks)
         await message.answer(f"ВАРИАНТ №{variant_number}", reply_markup=ReplyKeyboardRemove())
 
-        variant = TESTS[exam_type][variant_idx]
-        await show_task(message, variant[0], 1)
+        await show_task(message, state)
     else:
         await message.answer(f"Пожалуйста, введите число от 1 до {max_variants}")
 
@@ -209,7 +220,7 @@ async def process_variant_number(message: Message, state: FSMContext) -> None:
 @form_router.message(Form.choosing_variant)
 async def process_invalid_variant_number(message: Message, state: FSMContext) -> None:
     exam_type = await state.get_value("exam_type")
-    max_variants = len(TESTS[exam_type])
+    max_variants = len(listdir(f"./{exam_type}"))
     await message.answer(f"Пожалуйста, введите число от 1 до {max_variants}")
 
 
@@ -224,11 +235,11 @@ async def process_answer_task(message: Message, state: FSMContext) -> None:
 
     task_idx = data["task_idx"] + 1
     variant_idx = data["variant_idx"]
-    variant = TESTS[exam_type][variant_idx]
-
     await state.update_data(answers=answers, task_idx=task_idx)
 
-    if task_idx == len(variant):
+    max_tasks = len(listdir(join(".", exam_type, str(variant_idx))))
+
+    if task_idx == max_tasks:
         await show_results(message, state)
         await state.set_state(None)
         await state.update_data(
@@ -237,8 +248,8 @@ async def process_answer_task(message: Message, state: FSMContext) -> None:
             variant_idx=None
         )
     else:
-        next_task = variant[task_idx]
-        await show_task(message, next_task, task_idx + 1)
+        await message.delete()
+        await show_task(message, state)
 
 
 @form_router.message()
