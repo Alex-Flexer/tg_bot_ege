@@ -8,17 +8,18 @@ from dotenv import dotenv_values
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup, default_state
 from aiogram.types import (
     Message,
     ReplyKeyboardRemove,
     BotCommand,
-    FSInputFile
+    FSInputFile,
+    CallbackQuery
 )
 
-from keyboards import CHECKING_STOP_TEST_KEYBOARD, SOLVE_KEYBOARD, EXAM_TYPE_KEYBOARD
+from keyboards import CHECKING_STOP_TEST_KEYBOARD, SOLVE_KEYBOARD, EXAM_TYPE_KEYBOARD, START_KEYBOARD
 
 BOT_COMMANDS = [
     BotCommand(command="start", description="Start bot"),
@@ -53,6 +54,7 @@ async def show_results(message: Message, state: FSMContext) -> None:
     text = "Результаты:\n\n"
 
     data = await state.get_data()
+
     exam_type = data["exam_type"]
     variant_idx = data["variant_idx"]
     variant = TESTS[exam_type][variant_idx]
@@ -93,10 +95,11 @@ class Form(StatesGroup):
 
 
 @form_router.message(CommandStart())
-async def command_start(message: Message, state: FSMContext) -> None:
+async def command_start(message: Message) -> None:
     await message.answer(
         HELLO_TEXT,
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=START_KEYBOARD
+        # reply_markup=ReplyKeyboardRemove(),
     )
 
 
@@ -112,8 +115,53 @@ async def command_solve(message: Message, state: FSMContext) -> None:
     await state.set_state(Form.choosing_exam)
     await message.answer(
         "Выберите тип экзамена:",
-        reply_markup=EXAM_TYPE_KEYBOARD
+        reply_markup=EXAM_TYPE_KEYBOARD,
     )
+
+
+@form_router.message(F.text.casefold() == "стоп", or_f(Form.solving_tasks, Form.choosing_variant))
+async def process_stop_first(message: Message, state: FSMContext) -> None:
+    await state.set_state(Form.stopping_solving)
+    await message.answer(
+        "Вы действительно хотите прекратить решение теста?",
+        reply_markup=CHECKING_STOP_TEST_KEYBOARD
+    )
+
+
+@form_router.message(F.text.casefold() == "стоп", Form.stopping_solving)
+async def process_stop_final(message: Message, state: FSMContext) -> None:
+    await message.answer("Тест приостановлен.", reply_markup=ReplyKeyboardRemove())
+    if await state.get_value("variant_idx") is not None:
+        await show_results(message, state)
+        
+    await state.set_state(None)
+    await state.update_data(answers=[], task_idx=0)
+
+
+@form_router.message(F.text.casefold() == "стоп", default_state)
+async def process_stop_undefined(message: Message) -> None:
+    await message.answer("Чтобы оставить решение варианта, сначала нужно его начать.")
+
+
+@form_router.message(F.text.casefold() == "продолжить", Form.stopping_solving)
+async def process_continue_solving(message: Message, state: FSMContext) -> None:
+    await message.answer("Решение заданий успешно восставновлено.", reply_markup=SOLVE_KEYBOARD)
+    await state.set_state(Form.solving_tasks)
+
+
+@form_router.callback_query(F.data.startswith("start_"))
+async def handle_start_buttons(callback: CallbackQuery, state: FSMContext):
+    exam_type = "oge" if callback.data == "start_oge" else "ege"
+    await state.update_data(exam_type=exam_type)
+
+    await state.set_state(Form.choosing_variant)
+
+    max_variants = len(TESTS[exam_type])
+    await callback.message.answer(
+        f"Введите номер варианта (от 1 до {max_variants}):",
+        reply_markup=SOLVE_KEYBOARD
+    )
+    await callback.answer()
 
 
 @form_router.message(Form.choosing_exam, F.text.casefold().in_(["огэ", "егэ"]))
@@ -126,7 +174,7 @@ async def process_exam_choice(message: Message, state: FSMContext) -> None:
     max_variants = len(TESTS[exam_type])
     await message.answer(
         f"Введите номер варианта (от 1 до {max_variants}):",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=SOLVE_KEYBOARD
     )
 
 
@@ -165,33 +213,6 @@ async def process_invalid_variant_number(message: Message, state: FSMContext) ->
     await message.answer(f"Пожалуйста, введите число от 1 до {max_variants}")
 
 
-@form_router.message(F.text.casefold() == "стоп", Form.solving_tasks)
-async def process_stop_first(message: Message, state: FSMContext) -> None:
-    await state.set_state(Form.stopping_solving)
-    await message.answer(
-        "Вы действительно хотите прекратить решение теста?",
-        reply_markup=CHECKING_STOP_TEST_KEYBOARD
-    )
-
-
-@form_router.message(F.text.casefold() == "стоп", Form.stopping_solving)
-async def process_stop_final(message: Message, state: FSMContext) -> None:
-    await show_results(message, state)
-    await state.set_state(None)
-    await state.update_data(answers=[], task_idx=0)
-
-
-@form_router.message(F.text.casefold() == "стоп", default_state)
-async def process_stop_undefined(message: Message) -> None:
-    await message.answer("Чтобы оставить решение варианта, сначала нужно его начать.")
-
-
-@form_router.message(F.text.casefold() == "продолжить", Form.stopping_solving)
-async def process_continue_solving(message: Message, state: FSMContext) -> None:
-    await message.answer("Решение заданий успешно восставновлено.", reply_markup=SOLVE_KEYBOARD)
-    await state.set_state(Form.solving_tasks)
-
-
 @form_router.message(Form.solving_tasks)
 async def process_answer_task(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
@@ -210,7 +231,11 @@ async def process_answer_task(message: Message, state: FSMContext) -> None:
     if task_idx == len(variant):
         await show_results(message, state)
         await state.set_state(None)
-        await state.update_data(answers=[], task_idx=0)
+        await state.update_data(
+            answers=[],
+            task_idx=None,
+            variant_idx=None
+        )
     else:
         next_task = variant[task_idx]
         await show_task(message, next_task, task_idx + 1)

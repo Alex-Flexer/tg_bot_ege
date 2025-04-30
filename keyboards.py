@@ -1,4 +1,4 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
 
 EXAM_TYPE_KEYBOARD = ReplyKeyboardMarkup(
@@ -16,4 +16,12 @@ SOLVE_KEYBOARD = ReplyKeyboardMarkup(
 CHECKING_STOP_TEST_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Стоп"), KeyboardButton(text="Продолжить")]],
     resize_keyboard=True
+)
+
+
+START_KEYBOARD = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="ОГЭ", callback_data="start_oge"),
+         InlineKeyboardButton(text="ЕГЭ", callback_data="start_ege")]
+    ]
 )
