@@ -83,13 +83,22 @@ async def show_results(message: Message, state: FSMContext) -> None:
     cnt_right_solutions = 0
 
     for idx, (user_answer, right_answer) in enumerate(zip(user_answers, right_answers)):
-        verdict = user_answer.replace(",", ".").replace(" ", "")  == right_answer
+        verdict = user_answer.replace(".", ",").replace(" ", "")  == right_answer
         cnt_right_solutions += verdict
         text += f"{idx + 1}) {"+" if verdict else "-"}\n"
 
     text += f"\nВаш результат: {cnt_right_solutions}/{len(user_answers)}"
 
-    await message.answer(text, reply_markup=ReplyKeyboardRemove())
+    if cnt_right_solutions == len(right_answers):
+        photo = FSInputFile("./images/perfect_img.jpg")
+        await message.answer_photo(
+            photo,
+            text,
+            reply_markup=ReplyKeyboardRemove()
+        )
+    else:
+        await message.answer(text, reply_markup=ReplyKeyboardRemove())
+
     await message.answer(
         "Хотите продолжить подготовку?",
         reply_markup=(EGE_INLINE_KEYBOARD if exam_type == "ege" else OGE_INLINE_KEYBOARD)
