@@ -25,12 +25,15 @@ from keyboards import (
     FINAL_CHECKING_STOP_TEST_KEYBOARD,
     FIRST_CHECKING_STOP_TEST_KEYBOARD,
     EXAM_TYPE_KEYBOARD,
-    EXAM_TYPE_INLINE_KEYBOARD
+    EXAM_TYPE_INLINE_KEYBOARD,
+    EGE_INLINE_KEYBOARD,
+    OGE_INLINE_KEYBOARD
 )
 
 BOT_COMMANDS = [
     BotCommand(command="start", description="Start bot"),
-    BotCommand(command="solve", description="Start solving tasks")
+    BotCommand(command="solve", description="Start solving tasks"),
+    BotCommand(command="contacts", description="Get contacts")
 ]
 
 config = dotenv_values(".env")
@@ -48,36 +51,49 @@ HELLO_TEXT = """👋 Привет!
 
 Здесь ты сможешь:
 ✅ Проверить свои ответы.
-✅ Узнать правильное решение.
-✅ Получить подсказку, если что-то пошло не так.
+✅ Получишь консультацию через кнопку «контакты»
 
-🚀 Просто введи номер задания или отправь свой ответ — бот всё проверит!
+🚀 Просто введи номер варианта и отправь свой ответ — бот всё проверит!
 И помни: каждая ошибка — это шаг к 100 баллам.
 
 Готов проверить себя? Погнали! 🎯
 """
 
+CONTACS_TEXT = """Поддержка:
+
+Присоединяйтесь к нашему Telegram-каналу:
+@matnas7
+
+💬 Если у вас есть вопросы или вам нужна помощь:
+@NikitaAlekseevichh
+"""
+
 
 async def show_results(message: Message, state: FSMContext) -> None:
-    text = "Результаты:\n\n"
+    text = "Результат:\n\n"
 
     data = await state.get_data()
 
     exam_type = data["exam_type"]
     variant_idx = data["variant_idx"]
 
-    user_answers = data.get("answers", [])
-    right_answers = ANSWERS[exam_type][variant_idx]
+    user_answers: list[str] = data.get("answers", [])
+    right_answers: list[str] = ANSWERS[exam_type][variant_idx]
 
     cnt_right_solutions = 0
 
     for idx, (user_answer, right_answer) in enumerate(zip(user_answers, right_answers)):
-        cnt_right_solutions += user_answer == right_answer
-        text += f"{idx + 1}) {"+" if user_answer == right_answer else "-"}\n"
+        verdict = user_answer.replace(",", ".").replace(" ", "")  == right_answer
+        cnt_right_solutions += verdict
+        text += f"{idx + 1}) {"+" if verdict else "-"}\n"
 
     text += f"\nВаш результат: {cnt_right_solutions}/{len(user_answers)}"
+
     await message.answer(text, reply_markup=ReplyKeyboardRemove())
-    await message.answer("Хотите продолжить подготовку?", reply_markup=EXAM_TYPE_INLINE_KEYBOARD)
+    await message.answer(
+        "Хотите продолжить подготовку?",
+        reply_markup=(EGE_INLINE_KEYBOARD if exam_type == "ege" else OGE_INLINE_KEYBOARD)
+    )
 
 
 async def show_task(message: Message, state: FSMContext) -> None:
@@ -112,7 +128,9 @@ class Form(StatesGroup):
 
 @form_router.message(CommandStart())
 async def command_start(message: Message) -> None:
-    await message.answer(
+    photo = FSInputFile("./images/start_img.jpg")
+    await message.answer_photo(
+        photo,
         HELLO_TEXT,
         reply_markup=EXAM_TYPE_INLINE_KEYBOARD
     )
@@ -132,6 +150,10 @@ async def command_solve(message: Message, state: FSMContext) -> None:
         "Выберите тип экзамена:",
         reply_markup=EXAM_TYPE_KEYBOARD,
     )
+
+@form_router.message(Command("contacts"))
+async def command_contacts(message: Message, state: FSMContext) -> None:
+    await message.answer(CONTACS_TEXT)
 
 
 @form_router.message(F.text.casefold() == "стоп", or_f(Form.solving_tasks, Form.choosing_variant))

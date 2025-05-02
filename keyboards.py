@@ -30,3 +30,15 @@ EXAM_TYPE_INLINE_KEYBOARD = InlineKeyboardMarkup(
          InlineKeyboardButton(text="ЕГЭ", callback_data="start_ege")]
     ]
 )
+
+EGE_INLINE_KEYBOARD = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="ЕГЭ", callback_data="start_ege")]
+    ]
+)
+
+OGE_INLINE_KEYBOARD = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="ОГЭ", callback_data="start_oge")]
+    ]
+)
