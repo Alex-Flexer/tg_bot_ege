@@ -106,7 +106,10 @@ async def show_results(message: Message, state: FSMContext) -> None:
 
     await message.answer(
         "Хотите продолжить подготовку?",
-        reply_markup=(EGE_INLINE_KEYBOARD if exam_type == "ege" else OGE_INLINE_KEYBOARD)
+        reply_markup=(
+            EXAM_TYPE_KEYBOARD if len(user_answers) == len(right_answers)
+            else (EGE_INLINE_KEYBOARD if exam_type == "ege" else OGE_INLINE_KEYBOARD)
+        )
     )
 
 
