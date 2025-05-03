@@ -25,9 +25,10 @@ from keyboards import (
     FINAL_CHECKING_STOP_TEST_KEYBOARD,
     FIRST_CHECKING_STOP_TEST_KEYBOARD,
     EXAM_TYPE_KEYBOARD,
-    EXAM_TYPE_INLINE_KEYBOARD,
+    START_INLINE_KEYBOARD,
     EGE_INLINE_KEYBOARD,
-    OGE_INLINE_KEYBOARD
+    OGE_INLINE_KEYBOARD,
+    EXAM_TYPE_INLINE_KEYBOARD
 )
 
 BOT_COMMANDS = [
@@ -107,7 +108,7 @@ async def show_results(message: Message, state: FSMContext) -> None:
     await message.answer(
         "Хотите продолжить подготовку?",
         reply_markup=(
-            EXAM_TYPE_KEYBOARD if len(user_answers) == len(right_answers)
+            EXAM_TYPE_INLINE_KEYBOARD if len(user_answers) != len(right_answers)
             else (EGE_INLINE_KEYBOARD if exam_type == "ege" else OGE_INLINE_KEYBOARD)
         )
     )
@@ -153,7 +154,7 @@ async def command_start(message: Message) -> None:
     await message.answer_photo(
         photo,
         HELLO_TEXT,
-        reply_markup=EXAM_TYPE_INLINE_KEYBOARD
+        reply_markup=START_INLINE_KEYBOARD
     )
 
 

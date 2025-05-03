@@ -24,7 +24,7 @@ FINAL_CHECKING_STOP_TEST_KEYBOARD = ReplyKeyboardMarkup(
 )
 
 
-EXAM_TYPE_INLINE_KEYBOARD = InlineKeyboardMarkup(
+START_INLINE_KEYBOARD = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text="ОГЭ", callback_data="start_oge"),
          InlineKeyboardButton(text="ЕГЭ", callback_data="start_ege")],
@@ -41,5 +41,12 @@ EGE_INLINE_KEYBOARD = InlineKeyboardMarkup(
 OGE_INLINE_KEYBOARD = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text="ОГЭ", callback_data="start_oge")]
+    ]
+)
+
+EXAM_TYPE_INLINE_KEYBOARD = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="ОГЭ", callback_data="start_oge"),
+         InlineKeyboardButton(text="ЕГЭ", callback_data="start_ege")]
     ]
 )
