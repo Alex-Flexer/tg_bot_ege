@@ -76,6 +76,11 @@ async def show_results(message: Message, state: FSMContext) -> None:
 
     exam_type = data["exam_type"]
     variant_idx = data["variant_idx"]
+    task_idx = data["task_idx"]
+
+    if task_idx < 5 and exam_type == "oge":
+        task_img = data["task_img"]
+        await task_img.delete()
 
     user_answers: list[str] = data.get("answers", [])
     right_answers: list[str] = ANSWERS[exam_type][variant_idx]
@@ -83,7 +88,7 @@ async def show_results(message: Message, state: FSMContext) -> None:
     cnt_right_solutions = 0
 
     for idx, (user_answer, right_answer) in enumerate(zip(user_answers, right_answers)):
-        verdict = user_answer.replace(".", ",").replace(" ", "")  == right_answer
+        verdict = user_answer.replace(".", ",").replace(" ", "") == right_answer
         cnt_right_solutions += verdict
         text += f"{idx + 1}) {"+" if verdict else "-"}\n"
 
@@ -119,6 +124,10 @@ async def show_task(message: Message, state: FSMContext) -> None:
     if task_idx > 0:
         last_msg = data["last_msg"]
         await last_msg.delete()
+
+    if task_idx == 5 and exam_type == "oge":
+        task_img = data["task_img"]
+        await task_img.delete()
 
     last_msg = await message.answer_photo(
         photo,
@@ -160,8 +169,9 @@ async def command_solve(message: Message, state: FSMContext) -> None:
         reply_markup=EXAM_TYPE_KEYBOARD,
     )
 
+
 @form_router.message(Command("contacts"))
-async def command_contacts(message: Message, state: FSMContext) -> None:
+async def command_contacts(message: Message) -> None:
     await message.answer(CONTACS_TEXT)
 
 
@@ -181,7 +191,7 @@ async def process_stop_final(message: Message, state: FSMContext) -> None:
         await show_results(message, state)
 
     await state.set_state(None)
-    await state.update_data(answers=[], task_idx=None, variant_idx=None)
+    await state.update_data(answers=[], task_idx=None, variant_idx=None, task_img=None)
 
 
 @form_router.message(F.text.casefold() == "стоп", default_state)
@@ -200,16 +210,19 @@ async def process_continue_solving(message: Message, state: FSMContext) -> None:
 
 @form_router.callback_query(F.data.startswith("start_"))
 async def handle_start_buttons(callback: CallbackQuery, state: FSMContext):
-    exam_type = "oge" if callback.data == "start_oge" else "ege"
-    await state.update_data(exam_type=exam_type)
+    if callback.data == "start_contacts":
+        await callback.message.answer(CONTACS_TEXT)
+    else:
+        exam_type = "oge" if callback.data == "start_oge" else "ege"
+        await state.update_data(exam_type=exam_type)
 
-    await state.set_state(Form.choosing_variant)
+        await state.set_state(Form.choosing_variant)
 
-    max_variants = len(listdir(f"./{exam_type}"))
-    await callback.message.answer(
-        f"Введите номер варианта (от 1 до {max_variants}):",
-        reply_markup=FIRST_CHECKING_STOP_TEST_KEYBOARD
-    )
+        max_variants = len(listdir(f"./{exam_type}"))
+        await callback.message.answer(
+            f"Введите номер варианта (от 1 до {max_variants}):",
+            reply_markup=FIRST_CHECKING_STOP_TEST_KEYBOARD
+        )
     await callback.answer()
 
 
@@ -248,6 +261,9 @@ async def process_variant_number(message: Message, state: FSMContext) -> None:
         )
         await state.set_state(Form.solving_tasks)
         await message.answer(f"ВАРИАНТ №{variant_number}", reply_markup=ReplyKeyboardRemove())
+        if exam_type == "oge":
+            task_img = await message.answer_photo(FSInputFile(f"./oge/{variant_idx}/img.png"))
+            await state.update_data(task_img=task_img)
 
         await show_task(message, state)
     else:
