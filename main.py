@@ -290,7 +290,7 @@ async def process_answer_task(message: Message, state: FSMContext) -> None:
     variant_idx = data["variant_idx"]
     await state.update_data(answers=answers, task_idx=task_idx)
 
-    max_tasks = len(listdir(join(".", exam_type, str(variant_idx))))
+    max_tasks = len(listdir(join(".", exam_type, str(variant_idx)))) - (exam_type == "oge")
 
     if task_idx == max_tasks:
         await show_results(message, state)
