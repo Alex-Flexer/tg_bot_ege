@@ -190,7 +190,11 @@ async def process_stop_first(message: Message, state: FSMContext) -> None:
 
 @form_router.message(F.text.casefold() == "стоп", Form.stopping_solving)
 async def process_stop_final(message: Message, state: FSMContext) -> None:
-    await message.answer("Тест приостановлен.", reply_markup=ReplyKeyboardRemove())
+    await message.answer(
+        "Тест приостановлен.",
+        reply_markup=EXAM_TYPE_INLINE_KEYBOARD
+    )
+
     if await state.get_value("variant_idx") is not None:
         await show_results(message, state)
 
