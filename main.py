@@ -192,7 +192,7 @@ async def process_stop_first(message: Message, state: FSMContext) -> None:
 async def process_stop_final(message: Message, state: FSMContext) -> None:
     await message.answer(
         "Тест приостановлен.",
-        reply_markup=EXAM_TYPE_INLINE_KEYBOARD
+        reply_markup=(EXAM_TYPE_INLINE_KEYBOARD if await state.get_value("variant_idx") is None else ReplyKeyboardRemove())
     )
 
     if await state.get_value("variant_idx") is not None:
